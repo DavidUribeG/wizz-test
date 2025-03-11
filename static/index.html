@@ -33,6 +33,11 @@
           @save-game="onAddOrUpdateGame"
           @delete-game="deleteGame" />
   </section>
+  <section class="section section-container" style="padding-top: 24px; padding-bottom: 5px">
+    <div class="box">
+      <populate-games title="Populate Games" @populate-games-db="populateGames"/>
+    </div>
+  </section>
   <section class="section section-container" style="padding-bottom: 10px;">
     <div class="box">
       <add-update-game title="Add Game" @save-game="onAddOrUpdateGame" />
@@ -167,12 +172,30 @@
     `
   }
 
+  const Populate = {
+    props: ['title'],
+    methods: {
+      populateGames() {
+        this.$emit('populate-games-db')
+      }
+    },
+    template: `
+      <div>
+        <h3 class='subtitle'>{{ title }}</h3>
+        <button class="button is-success" @click.stop="populateGames()">
+          Populate!
+        </button>
+      </div>
+    `
+  }
+
   const Search = {
     data () {
       return {
         name: '', platform: ''
       }
-    },methods: {
+    },
+    methods: {
       searchGames() {
         this.$emit('search-games-db', { name: this.name, platform: this.platform})
       }
@@ -209,7 +232,7 @@
 
   new Vue({
     el: '#app',
-    components: { game: Game, 'add-update-game': AddUpdateGame, 'search-games': Search },
+    components: { game: Game, 'add-update-game': AddUpdateGame, 'search-games': Search, 'populate-games': Populate },
     data: {
       games: [],
       search: [],
@@ -248,6 +271,12 @@
             const idx = copy.findIndex((c) => c.id === response.data.id)
             copy.splice(idx, 1)
             this.games = copy
+          })
+      },
+      populateGames () {
+        return axios.post(`${this.apiURL}/populate`, {})
+          .then((response) => {
+            this.games = response.data
           })
       },
       searchGames (search) {

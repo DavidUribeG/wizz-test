@@ -1,9 +1,14 @@
 const express = require('express');
+const axios = require('axios');
 const bodyParser = require('body-parser');
 const db = require('./models');
 const { Op } = require('sequelize');
 
 const app = express();
+
+const ANDROID_TOP_GAMES_URL = 'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/android.top100.json';
+const IOS_TOP_GAMES_URL = 'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/ios.top100.json';
+
 
 app.use(bodyParser.json());
 app.use(express.static(`${__dirname}/static`));
@@ -39,6 +44,12 @@ app.post('/api/games/search', (req, res) => {
       return res.send(err);
     });
 });
+
+app.post('/api/games/populate', (_req, res) => 
+  db.Game.findAll()
+    .then(games => res.send(games.slice(0,3)))
+  // TODO: Populate the DB and resend the full list of games.
+);
 
 app.delete('/api/games/:id', (req, res) => {
   // eslint-disable-next-line radix
