@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./models');
+const { Op } = require('sequelize');
 
 const app = express();
 
@@ -21,6 +22,21 @@ app.post('/api/games', (req, res) => {
     .catch((err) => {
       console.log('***There was an error creating a game', JSON.stringify(err));
       return res.status(400).send(err);
+    });
+});
+
+app.post('/api/games/search', (req, res) => {
+  const { name, platform } = req.body;
+  return db.Game.findAll({
+      where: {
+        name: { [Op.substring]: name },
+        platform: { [Op.substring]: platform }
+      }
+    })
+    .then(games => res.send(games))
+    .catch((err) => {
+      console.log('There was an error searching games', JSON.stringify(err));
+      return res.send(err);
     });
 });
 
