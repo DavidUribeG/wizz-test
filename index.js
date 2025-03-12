@@ -7,6 +7,9 @@ const { Op } = require('sequelize');
 const app = express();
 
 const ANDROID_TOP_GAMES_URL = 'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/android.top100.json';
+const TOP_FREE_GAMES_INDEX = 0;
+const TOP_SALES_GAMES_INDEX = 1;
+const TOP_GROSSING_GAMES_INDEX = 2;
 const IOS_TOP_GAMES_URL = 'https://interview-marketing-eng-dev.s3.eu-west-1.amazonaws.com/ios.top100.json';
 
 
@@ -45,11 +48,30 @@ app.post('/api/games/search', (req, res) => {
     });
 });
 
-app.post('/api/games/populate', (_req, res) => 
-  db.Game.findAll()
-    .then(games => res.send(games.slice(0,3)))
-  // TODO: Populate the DB and resend the full list of games.
-);
+const mapAppStoreEntryToGame = (entry, platform) => ({
+  publisherId: entry.publisher_id,
+  name: entry.name,
+  platform: platform,
+  storeId: entry.id,
+  bundleId: entry.bundle_id,
+  appVersion: entry.version,
+  isPublished: true,
+});
+
+app.post('/api/games/populate', (_req, res) => {
+  const fetchAndroidTopGames = axios.get(ANDROID_TOP_GAMES_URL, { responseType: "json" });
+  const fetchIOSTopGames = axios.get(IOS_TOP_GAMES_URL, { responseType: "json" });
+  Promise.all([fetchAndroidTopGames, fetchIOSTopGames])
+    .then(([androidResponse, iosResponse]) => {
+      const androidTopGames = androidResponse.data.map(entry => mapAppStoreEntryToGame(entry[TOP_GROSSING_GAMES_INDEX], 'android'));
+      const iosTopGames = iosResponse.data.map(entry => mapAppStoreEntryToGame(entry[TOP_GROSSING_GAMES_INDEX], 'ios'));
+      const gameList = androidTopGames.concat(iosTopGames);
+      return gameList;
+    })
+    .then(gameList => db.Game.bulkCreate(gameList))
+    .then(() => db.Game.findAll())
+    .then(games => res.send(games));
+});
 
 app.delete('/api/games/:id', (req, res) => {
   // eslint-disable-next-line radix
