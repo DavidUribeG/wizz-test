@@ -63,8 +63,33 @@ Many other applications at Voodoo will use consume this API.
 We are planning to put this project in production. According to you, what are the missing pieces to make this project production ready? 
 Please elaborate an action plan.
 
+#### Answer 1:
+
+* First, the basic changes to the codebase should include:
+  * Limiting write-access to the data by implementing some basic authentication for our users. Otherwise the system as it is will remain vulnerable.
+  * Changing the structure of the games table to avoid duplicates, for example, by setting a uniqueness constraint on store ids + platform.
+  * Similarly to reduce vulnerabilities, setup some kind of rate-limiting on the most sensitive endpoints (like /populate).
+  * Finishing up the tests for the new features.
+  * Setting up a database in a system better suited for scalability: PostgreSQl or MySQL for example.
+
+* And, on starting a production deployment cycle:
+  * We probably want to start by setting up containers for the project, like in Docker, to make it portable and have better control of the deployment.
+  * Finding a hosting service to run the servers, like Fly.io which is quick enough, or if we want something more production-ready, Digital Ocean, for example.
+  * Probably buying a domain name unless we're only running this internally. 
+  * Setting up a deployment cycle. This could be done with GitHub Actions, but there are other options available. This is so new changes to the repository are regularly updated in production.
+  * Setting up some monitoring for the project. This could be simple logs, since the project is in early stages anyway.
+
+
 #### Question 2:
 Let's pretend our data team is now delivering new files every day into the S3 bucket, and our service needs to ingest those files
 every day through the populate API. Could you describe a suitable solution to automate this? Feel free to propose architectural changes.
 
+#### Answer 2:
+
+  * We could quickly setup a daily cronjob (or some other type of scheduled job) to fetch the most recent files in the bucket and update the DB this way.
+  * If these new files are numerous, setting up a queue to trigger one job per file, or per a fixed amount of files, at a time will help manage the duration of each separate job.
+  * This makes it even more important to setup uniqueness constraints on the DB to avoid repeated entries, and avoid a second identical request creating doubles of everything. 
+  * Given that this is to be run automatically, we need to improve the error handling in the endpoint in case the S3 files are badly formatted or no longer in the expected format.
+  * Likewise, we'll have less and less control on the size of the files we're using to populate the game list, so we'll probably need to batch the populating so we don't lock the DB (for example in batches of 1000 entries at a time), and make sure the process is wrapped in a transaction, to ensure the DB stays in a coherent state.
+  * In the extreme case that these jobs take too long even with the past considerations, it may be useful to setup a secondary read-only DB (and even secondary write DBs) to compartmentalize the work of querying data for our users vs. populating the tables.
 
